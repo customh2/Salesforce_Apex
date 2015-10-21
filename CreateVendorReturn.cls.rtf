@@ -1,0 +1,334 @@
+{\rtf1\ansi\ansicpg1252\cocoartf1038\cocoasubrtf360
+{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
+{\colortbl;\red255\green255\blue255;}
+\margl1440\margr1440\vieww14960\viewh12560\viewkind0
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\ql\qnatural\pardirnatural
+
+\f0\fs24 \cf0 public with sharing class CreateVendorReturn \{\
+\
+    public ApexPages.StandardSetController setCon;\
+    public List<CloudConversion__RMA_Line__c> records;\
+    public String Supplier = '';\
+    public ECS__Supplier__c SupplierRecd = null;\
+    public String ReturnName = '';\
+    public String SupplierOK = 'Yes';\
+    public String CodesOK = 'Yes';\
+    public String OnReturnsOK = 'Yes';\
+    public String DefaultEmail = 'kimk@pdiautoparts.com';\
+    public String Recipient \{get; set;\}\
+    public String CC_Recipient \{get; set;\}\
+    public String script \{get; set;\}\
+    //public String Flds = 'Id,Name,Image_URL_1__c,Image_URL_2__c,Image_URL_3__c,Image_URL_4__c,CloudConversion__Original_Product__c,RMA_Status__c,CloudConversion__SKU__c,CloudConversion__Returned_Quantity__c,CloudConversion__Supplier__c,Vendor_Batch_Code__c,Vendor_Return_Code_1A__c,Vendor_Return_Code_1B__c,Vendor_Return_Code_2A__c,Vendor_Return_Code_2B__c';\
+\
+    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -\
+    // Constructor - Runs when this class is created (the first time)\
+    public CreateVendorReturn(ApexPages.StandardSetController controller) \{\
+        \
+        setCon = controller;\
+        \
+        records = setCon.getSelected();\
+        //get_records();\
+        debug('' + records.size() + ' rma_lines Selected');\
+        //Boolean OK = double_check();\
+        //SupplierRecd = get_supplier();\
+        //debug('Line 28: Recipient = ' + Recipient);\
+        //if (SupplierRecd != null) \{\
+        //    if ((SupplierRecd.ReturnEmail__c != null && SupplierRecd.ReturnEmail__c != '') && (Recipient == '' || Recipient == null)) \{\
+        //        Recipient = SupplierRecd.ReturnEmail__c;\
+        //        debug('Line 32: Recipient = ' + Recipient);\
+\
+        //    \}\
+        //\}\
+        //debug('Line 36: Recipient = ' + Recipient);\
+        //if (Recipient == '' || Recipient == null) Recipient = DefaultEmail;\
+        //debug('Line 38: Recipient = ' + Recipient);\
+    \}\
+    \
+    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -\
+    // not used at the moment\
+    public CreateVendorReturn(ApexPages.StandardController controller) \{\
+    \}\
+    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -\
+    // Generic Constructor\
+    public CreateVendorReturn() \{\
+        system.Debug(' -- CLASS -- Generic Constructor');\
+    \}\
+    \
+   \
+    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -\
+    // Runs when the uaser clicks the 'Create Return' button (main job of this class)\
+    public pageReference create_return() \{\
+        get_records();\
+        debug('' + records.size() + ' rma_lines Selected');\
+        Boolean OK = double_check();\
+        SupplierRecd = get_supplier();\
+        debug('Line 59 Recipient = ' + Recipient);\
+        if (SupplierRecd != null) \{\
+            if ((SupplierRecd.ReturnEmail__c != null && SupplierRecd.ReturnEmail__c != '') && (Recipient == '' || Recipient == null)) \{\
+                Recipient = SupplierRecd.ReturnEmail__c;\
+                debug('Line 63: Recipient = ' + Recipient);\
+\
+            \}\
+        \}\
+        debug('Line 67: Recipient = ' + Recipient);\
+        if (Recipient == '' || Recipient == null) Recipient = DefaultEmail;\
+        debug('Line 69: Recipient = ' + Recipient);\
+        if ((SupplierRecd.ReturnEmail__c != null && SupplierRecd.ReturnEmail__c != '') && (Recipient == '' || Recipient == null)) Recipient = SupplierRecd.ReturnEmail__c;\
+        //debug('Email Recipient: ' + Recipient);\
+        if (validateEmail(Recipient) == false) \{\
+            error('Invalid Main Recipient Email Address'); \
+            OK = false;\
+        \}\
+        if (CC_Recipient != null && CC_Recipient != '') \{\
+            if (validateEmail(CC_Recipient) == false) \{\
+                error('Invalid CC Recipient Email Address'); \
+                OK = false;\
+            \}\
+        \}\
+        if (OnReturnsOK == 'No') \{\
+            //error('One or more of these RMA Lines are ALREADY ON A RETURN.');\
+            OK = false;\
+        \}\
+        if (records.size() == 0) error('No RMA_Line Records Selected, Cannot Create Return');\
+        if (OK == true && records.size() > 0) \{ // Everything checks out so create the new vendor return\
+            SupplierRecd = get_supplier(); // Get the Supplier Record\
+            ReturnName = return_name(); // Assemble the New Return Name\
+            DateTime Now = DateTime.now();\
+            String Username = UserInfo.getName();\
+            get_records();\
+            String ReturnNumber = get_next_return_number();\
+            debug('Creating New Return: ' + ReturnName); \
+            String Content = build_file(ReturnNumber);\
+            \
+            \
+            Messaging.EmailFileAttachment csvAttc = new Messaging.EmailFileAttachment();\
+            blob csvBlob = Blob.valueOf(Content);\
+            //string csvname= 'Account.csv';\
+            csvAttc.setFileName(ReturnName + '.csv');\
+            csvAttc.setBody(csvBlob);\
+            Messaging.SingleEmailMessage email =new Messaging.SingleEmailMessage();\
+            String[] toAddresses = new list<string> \{Recipient\};\
+            String subject = 'Vendor Return ' + ReturnNumber + ' - ' + ReturnName;\
+            email.setSubject(subject);\
+            email.setToAddresses( toAddresses );\
+            if (CC_Recipient != null && CC_Recipient != '') \{\
+                email.setCcAddresses( new List<String> \{ CC_Recipient \} );\
+                debug('Sending CC Email to ' + CC_Recipient );\
+            \}\
+            email.setPlainTextBody(ReturnNumber + ' - ' + ReturnName);\
+            email.setFileAttachments(new Messaging.EmailFileAttachment[]\{csvAttc\});\
+            Messaging.SendEmailResult [] responses = Messaging.sendEmail(new Messaging.SingleEmailMessage[] \{email\});\
+            //debug('Email Responses: ' + responses + '');\
+            Messaging.SendEmailResult response = responses[0];\
+            //debug('Email Response[0]: ' + response + '');\
+            if (response.isSuccess() == true) \{\
+                debug('EMail Sent Successfully to ' + Recipient + ' !');\
+                // -- Only Create the Return and Update RMA Lines if the email was successful --\
+                Supplier_return_return__c NewReturn = New Supplier_return_return__c(Name=ReturnName, status__c='New', Supplier__c=Supplier, submitted_by__c=Username, submitted_date__c=Now, CSV_File_Contents__c=Content);\
+                insert NewReturn;\
+                String ReturnID = NewReturn.Id;\
+                for (CloudConversion__RMA_Line__c record : records) \{\
+                    record.Supplier_return__c = ReturnID;\
+                \}\
+                update records;\
+                debug('New Return Created (' + ReturnID + ') and RMA_Lines Updated.');\
+                script = 'hide_button();\\n';\
+                records = New List<CloudConversion__RMA_Line__c> \{\};\
+            \}\
+           \
+        \}\
+        return null;\
+    \}\
+    \
+    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -\
+    // Check to make sure everything is OK to create the new return\
+    public Boolean double_check() \{\
+        if (records.size() > 0) \{\
+            for (CloudConversion__RMA_Line__c record : records) \{\
+                if (Supplier == '') \{\
+                    Supplier = record.CloudConversion__Supplier__c;\
+                \} else if (Supplier != record.CloudConversion__Supplier__c) \{\
+                    SupplierOK = 'No';\
+                \}\
+                if (record.Vendor_Return_Code_1A__c == '') CodesOK = 'No';\
+                if (record.Vendor_Return_Code_1B__c == '') CodesOK = 'No';\
+                if (record.Supplier_Return__c != null && record.Supplier_Return__c != '')  OnReturnsOK = 'No';\
+            \}\
+        \}\
+        if (SupplierOK == 'No') error('You can ONLY create a Vendor Return for ONE Supplier at a time.');\
+        if (CodesOK == 'No') error('All RMA Lines MUST have BOTH (1A) and (1B) Problem Codes selected.');\
+        if (OnReturnsOK == 'No') error('One or more of these RMA Lines are ALREADY ON A RETURN.');\
+        if (SupplierOK == 'No' || CodesOK == 'No' ||  OnReturnsOK == 'No') return false;\
+        return true;\
+    \}\
+    \
+    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -\
+    // displays an 'info' message in the pageBlockMessages\
+    public void debug(string message)\{\
+        system.debug(message);\
+        ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.INFO, message));\
+    \}\
+    \
+    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -\
+    // displays an 'error' message in the pageBlockMessages\
+    public void error(string message)\{\
+        system.debug(message);\
+        ApexPages.addMessage(new ApexPages.Message(ApexPages.Severity.ERROR, message));\
+    \}\
+    \
+    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -\
+    // gets the supplier record for the Supplier (Id)\
+    public ECS__Supplier__c get_supplier() \{\
+        ECS__Supplier__c supp= null;\
+        List <ECS__Supplier__c> suppliers = [SELECT Id, Name, ECS__Supplier_Email__c, ECS__Primary_Contact_Name__c, columns__c, ReturnEmail__c FROM ECS__Supplier__c WHERE Id = :Supplier];\
+        if (suppliers.size() > 0) supp = suppliers[0];\
+        return supp;\
+    \}\
+    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -\
+    // Assembles the new Return Name from the Supplier Name and Today's Date\
+    public String return_name() \{\
+        DateTime dt = DateTime.now();\
+        Integer month = dt.month();\
+        integer day = dt.day();\
+        Integer year = dt.year();\
+        String name = SupplierRecd.Name + '_' + year + '-' + month + '-' + day;\
+        return name;\
+    \}\
+    \
+    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -\
+    // Takes the limited records passed in and replaces them with more complete records\
+    public void get_records() \{\
+        List<String> IDs = New List<String>\{\};\
+        for (CloudConversion__RMA_Line__c record : records) IDs.Add(record.Id);\
+        //debug('get_records(): IDs = ' + IDs);\
+        records = [SELECT Id,Name,Image_URL_1__c,Image_URL_2__c,Image_URL_3__c,Image_URL_4__c,CloudConversion__Original_Product__r.Name,CloudConversion__Replacement_Product__r.Name,CloudConversion__Returned_Quantity__c,RMA_Status__c,CloudConversion__SKU__c,CloudConversion__Supplier__c,Vendor_Batch_Code__c,Vendor_Return_Code_1A__c,Vendor_Return_Code_1B__c,Vendor_Return_Code_2A__c,Vendor_Return_Code_2B__c, Supplier_return__c FROM CloudConversion__RMA_Line__c WHERE ID IN :IDs];\
+        //debug('get_records(): records = ' + records);\
+    \}\
+    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -\
+    public String build_file(String ReturnNumber) \{\
+        DateTime dt = DateTime.now();\
+        String Columns = '#:#,Product NO:SKU,Description:Codes,Total Qty:Qty,Product Batch:Batch,Photos:Image,Date of Filing:today';\
+        String Content = '"Return#"."' + ReturnNumber + '"\\n';\
+        String SKU = '';\
+        String SupplierColumns = SupplierRecd.columns__c;\
+        if (SupplierRecd.columns__c != '' && SupplierRecd.columns__c != null) \{\
+            Columns = SupplierRecd.columns__c;\
+            //debug('build_file(): Supplier Columns: ' + Columns);\
+        \}\
+        List<String> Cols = Columns.split(',');\
+        // -- Add Content Header Columns --\
+        Integer i= 0;\
+        String[] Arr;\
+        for (String Col : Cols) \{\
+            Arr = Col.split(':');\
+            if (i > 0) Content = Content + ',';\
+            Content = Content + '"' + Arr[0] + '"';\
+            i = i + 1;\
+        \}\
+        Content = Content + '\\n';\
+        integer r = 1;\
+        // -- Add Data Columns --\
+        if (records.size() > 0) \{\
+            for (CloudConversion__RMA_Line__c record : records) \{\
+                //debug('' + record + '');\
+                if (record.CloudConversion__SKU__c != null && record.CloudConversion__SKU__c != '') SKU = record.CloudConversion__SKU__c;\
+                else if (record.CloudConversion__Replacement_Product__r.Name != null && record.CloudConversion__Replacement_Product__r.Name != '') SKU = record.CloudConversion__Replacement_Product__r.Name;\
+                else if (record.CloudConversion__Original_Product__r.Name != null && record.CloudConversion__Original_Product__r.Name != '') SKU = record.CloudConversion__Original_Product__r.Name;\
+                i = 0;\
+                for (String Col : Cols) \{\
+                    Arr = Col.split(':');\
+                    if (i > 0) Content = Content + ',';\
+                    i = i + 1;\
+                    if (Arr[1] == '#') Content = Content + '"' + r + '"'; // entry number\
+                    if (Arr[1] == 'SKU') Content = Content + '"' + SKU + '"'; //record.CloudConversion__SKU__c;\
+                    if (Arr[1] == 'Codes') \{\
+                        Content = Content + '"' + record.Vendor_Return_Code_1A__c + '-' + record.Vendor_Return_Code_1B__c;\
+                        if (record.Vendor_Return_Code_2A__c != '' && record.Vendor_Return_Code_2A__c != null && record.Vendor_Return_Code_2B__c != '' && record.Vendor_Return_Code_2B__c != null) Content = Content + ', ' + record.Vendor_Return_Code_2A__c + '-' + record.Vendor_Return_Code_2B__c;\
+                        Content = Content + '"';\
+                    \}\
+                    if (Arr[1] == 'Qty') \{\
+                        if (record.CloudConversion__Returned_Quantity__c != null) \{\
+                            Content = Content + '"' + record.CloudConversion__Returned_Quantity__c + '"';\
+                        \} else Content = Content + '"1"';\
+                    \}\
+                    if (Arr[1] == 'Batch') Content = Content + '"' + record.Vendor_Batch_Code__c + '"';\
+                    if (Arr[1] == 'Image') Content = Content + '"' + record.Image_URL_1__c + '"';\
+                    if (Arr[1] == 'Today') Content = Content + '"' + DateTime.now().Date() + '"';\
+                    \
+                \}\
+                Content = Content + '\\n'; // end of the row\
+                if (record.Image_URL_2__c != null && record.Image_URL_2__c != '') \{\
+                    i = 0;\
+                    for (String Col : Cols) \{\
+                        Arr = Col.split(':');\
+                        if (i > 0) Content = Content + ',';\
+                        i = i + 1;\
+                        if (Arr[1] == 'Image') Content = Content + '"' + record.Image_URL_2__c + '"';\
+                    \}\
+                    Content = Content + '\\n'; // end of the row\
+                \}\
+                if (record.Image_URL_3__c != null && record.Image_URL_3__c != '') \{\
+                    i = 0;\
+                    for (String Col : Cols) \{\
+                        Arr = Col.split(':');\
+                        if (i > 0) Content = Content + ',';\
+                        i = i + 1;\
+                        if (Arr[1] == 'Image') Content = Content + '"' + record.Image_URL_3__c + '"';\
+                    \}\
+                    Content = Content + '\\n'; // end of the row\
+                \}\
+                if (record.Image_URL_4__c != null && record.Image_URL_4__c != '') \{\
+                    i = 0;\
+                    for (String Col : Cols) \{\
+                        Arr = Col.split(':');\
+                        if (i > 0) Content = Content + ',';\
+                        i = i + 1;\
+                        if (Arr[1] == 'Image') Content = Content + '"' + record.Image_URL_4__c + '"';\
+                    \}\
+                    Content = Content + '\\n'; // end of the row\
+                \}\
+                r = r + 1;\
+            \}\
+        \}\
+        //debug('build_file() <pre>' + Content + '</pre>');\
+        return content;\
+    \}\
+    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -\
+    public PageReference list_ee_rma_lines()\{\
+        PageReference pageRef = new PageReference('/a0U?fcf=00B17000000NUeA');\
+        return pageRef;\
+    \}\
+    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -\
+    public PageReference list_returns()\{\
+        PageReference pageRef = new PageReference('/a1p');\
+        return pageRef;\
+    \}\
+    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -\
+    public static Boolean validateEmail(String email) \{\
+        Boolean res = true;\
+     \
+        // source: <a href="http://www.regular-expressions.info/email.html" target="_blank" rel="nofollow">http://www.regular-expressions.info/email.html</a>\
+        String emailRegex = '^[a-zA-Z0-9._|\\\\\\\\%#~`=?&/$^*!\}\{+-]+@[a-zA-Z0-9.-]+\\\\.[a-zA-Z]\{2,4\}$'; \
+        Pattern MyPattern = Pattern.compile(emailRegex);\
+        Matcher MyMatcher = MyPattern.matcher(email);\
+ \
+        if (!MyMatcher.matches()) res = false;\
+        return res;\
+    \}\
+    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -\
+    public String get_next_return_number() \{\
+        String rnum = 'VR-001000';\
+        List<Supplier_return_return__c> returns = [SELECT Id, Name, ReturnNumber__c FROM Supplier_return_return__c ORDER BY ReturnNumber__c DESC NULLS LAST limit 1];\
+        if (returns.size() > 0) \{\
+            Supplier_return_return__c myreturn = returns[0];\
+            String LastNumber = myreturn.ReturnNumber__c.right(6);\
+            integer num = integer.valueOf(LastNumber) + 1;\
+            String padded = '' + num;\
+            while (padded.length() < 6) padded = '0' + padded;\
+            rnum = 'VR-' + padded;\
+        \} \
+        return rnum;\
+    \}\
+    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -\
+\
+\} // end of class}

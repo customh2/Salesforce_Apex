@@ -1,0 +1,30 @@
+{\rtf1\ansi\ansicpg1252\cocoartf1038\cocoasubrtf360
+{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
+{\colortbl;\red255\green255\blue255;}
+\margl1440\margr1440\vieww14960\viewh12560\viewkind0
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\ql\qnatural\pardirnatural
+
+\f0\fs24 \cf0 global class SingleProductCompat \{\
+	webservice static String UpdateCompatibilities(String SKU) \{\
+		String Str = '';\
+        String Str2 = '';\
+		ECS__Product__c product = [SELECT Id, Compatibilities__c FROM ECS__Product__c WHERE Name = :SKU];\
+		Fitment__c[] fitments = [SELECT Make__c, Model__c, Year__c, Trim__c, Engine__c, Notes__c, SKU__c FROM Fitment__c WHERE SKU__c = :SKU ORDER BY SKU__c, Make__c, Model__c, Year__c LIMIT 50000];\
+		for (Fitment__c f:fitments) \{\
+			Str2 = f.Year__c + '|' + f.Make__c + '|' + f.Model__c + '|';\
+			if (f.Trim__c != null) Str2 = Str2 + f.Trim__c;\
+			Str2 = Str2 + '|';\
+			if (f.Engine__c != null) Str2 = Str2 + f.Engine__c;\
+			if (f.Notes__c != null) \{ Str2 = Str2 + '::' + f.Notes__c; \}\
+            // We'll only add this fitment if the resulting string is < 64,000 chrs\
+            if ((Str.length() + Str2.length()) < 63998) \{\
+            	if (Str != '') Str = Str + '^^';\
+                Str = Str + Str2;\
+            \}\
+		\}\
+		product.Compatibilities__c = Str;\
+		product.FitmentsUpdated__c = false;\
+		update product;\
+        return 'Compatibilities Rebuilt Successfully.';\
+	\}\
+\}}

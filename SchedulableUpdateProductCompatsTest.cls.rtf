@@ -1,0 +1,101 @@
+{\rtf1\ansi\ansicpg1252\cocoartf1038\cocoasubrtf360
+{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
+{\colortbl;\red255\green255\blue255;}
+\margl1440\margr1440\vieww14960\viewh12560\viewkind0
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\ql\qnatural\pardirnatural
+
+\f0\fs24 \cf0 @isTest(SeeAllData=false)\
+/* \
+ * @isTest(SeeAllData=true) allows us to see existing data within the test class \
+ * otherwize we should create a test product to use for this test\
+ */\
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *\
+* This is a Test Class to test the SchedulableUpdateProductCompats class *\
+* which updates the Comapibilities fields in the B2CProducts table       *\
+* (by SKU) when the FitmentsUpdated flag is set by schedule or button.   *\
+* Written By Kim A. Kitchen, Performance Depot Inc, 2015-05-08           *\
+* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */\
+public with sharing class SchedulableUpdateProductCompatsTest \{\
+\
+   // CRON expression: midnight on March 15.\
+   // Because this is a test, job executes\
+   // immediately after Test.stopTest().\
+   public static String CRON_EXP = '0 0 0 15 3 ? 2022';\
+\
+   static testmethod void test() \{\
+       \
+      // First, create a new product to test\
+        String SKU = 'KimTest123456';\
+        String SKU2 = 'KimTest654321';\
+        datetime now = datetime.now();\
+        System.debug(' -- TEST (Sched) -- Testing using SKU ' + SKU + '');\
+        ECS__Product__C product = new ECS__Product__c(Name=SKU, Compatibilities__c='-', FitmentsUpdated__c = true, ECS__Last_Updated__c = now);\
+        insert product;\
+       // The 2 lines below are to test products with no fitments\
+        product = new ECS__Product__c(Name=SKU2, Compatibilities__c='-', FitmentsUpdated__c = true, ECS__Last_Updated__c = now);\
+        insert product;\
+\
+       // Second, Create a couple if fitments to test\
+        Fitment__c NewFitment1 = new Fitment__c(SKU__c=SKU, Make__c='Test Make 1', Model__c='Test Model 1', Year__c='2014');\
+        insert NewFitment1;\
+        Fitment__c NewFitment2 = new Fitment__c(SKU__c=SKU, Make__c='Test Make 2', Model__c='Test Model 2', Year__c='2014', Trim__c='Test Trim 2', Engine__c='Test Engine 2', Notes__c='Test Notes 2');\
+        insert NewFitment2;\
+       // Lookup the product and make sure the compatibilities fields is still blank \
+        ECS__Product__c[] products2 = [SELECT Compatibilities__c, FitmentsUpdated__c, ECS__Last_Updated__c FROM ECS__Product__c WHERE Name = :SKU];\
+        System.debug(' -- TEST (Sched) -- ' + products2.size() + ' Products Loaded (A)');\
+        ECS__Product__c product2 = products2[0];\
+        System.assertEquals('-', product2.Compatibilities__c);\
+        System.debug(' -- TEST (Sched) -- Product Compatibilities field is still blank (as it should be)');\
+        System.assertEquals(now, product2.ECS__Last_Updated__c);\
+        System.debug(' -- TEST (Sched) -- Product Last_Updated field is still (Now) (as it should be)');\
+      \
+      Test.startTest();\
+\
+      // Schedule the test job\
+      String jobId = System.schedule('ScheduleApexClassTest',\
+                        CRON_EXP, \
+                        new SchedulableUpdateProductCompats());\
+         \
+      // Get the information from the CronTrigger API object\
+      CronTrigger ct = [SELECT Id, CronExpression, TimesTriggered, \
+         NextFireTime\
+         FROM CronTrigger WHERE id = :jobId];\
+\
+      // Verify the expressions are the same\
+      System.assertEquals(CRON_EXP, \
+         ct.CronExpression);\
+\
+      // Verify the job has not run\
+      System.assertEquals(0, ct.TimesTriggered);\
+\
+      // Verify the next time the job will run\
+      System.assertEquals('2022-03-15 00:00:00', \
+         String.valueOf(ct.NextFireTime));\
+      // Verify the scheduled job hasn't run yet.\
+     \
+        ECS__Product__c[] products3 = [SELECT Compatibilities__c, FitmentsUpdated__c, ECS__Last_Updated__c FROM ECS__Product__c WHERE Name = :SKU];\
+        System.debug(' -- TEST -- ' + products3.size() + ' Products Loaded (B)');\
+        ECS__Product__c product3 = products3[0];\
+        System.assertEquals('-', product3.Compatibilities__c);\
+        System.debug(' -- TEST (sched) -- Product Compatibilities field is still blank (as it should be)');\
+        System.assertEquals(true, product3.FitmentsUpdated__c);\
+        System.debug(' -- TEST (sched) -- FitmentsUpdated flag is still true (as it should be)');\
+        System.assertEquals(now, product3.ECS__Last_Updated__c);\
+        System.debug(' -- TEST (Sched) -- Product Last_Updated field is still (Now) (as it should be)');\
+      \
+       Test.stopTest();\
+\
+      // Now that the scheduled job has executed after Test.stopTest(),\
+      //   fetch the product again and see that the Compatibilities are filled.\
+        ECS__Product__c[] products4 = [SELECT Compatibilities__c, FitmentsUpdated__c, ECS__Last_Updated__c FROM ECS__Product__c WHERE Name = :SKU];\
+        System.debug(' -- TEST (Sched) -- ' + products4.size() + ' Products Loaded (C)');\
+        ECS__Product__c product4 = products4[0];\
+        System.assertNotEquals('-', product4.Compatibilities__c);\
+        System.debug(' -- TEST (Sched) -- Product Compatibilities field is NOT blank (as it should be)');\
+		System.debug(' -- TEST (Sched) -- ' + product4.Compatibilities__c);\
+        System.assertEquals(false, product4.FitmentsUpdated__c);\
+        System.debug(' -- TEST (Sched) -- Product FitmentsUpdated flag is false (as it should be)');\
+        System.assertEquals(null, product4.ECS__Last_Updated__c);\
+        System.debug(' -- TEST (Sched) -- Product Last_Updated field is now NULL (as it should be)');\
+  \}\
+\}}

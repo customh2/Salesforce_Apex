@@ -1,0 +1,61 @@
+{\rtf1\ansi\ansicpg1252\cocoartf1038\cocoasubrtf360
+{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
+{\colortbl;\red255\green255\blue255;}
+\margl1440\margr1440\vieww14960\viewh12560\viewkind0
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\ql\qnatural\pardirnatural
+
+\f0\fs24 \cf0 @isTest(SeeAllData=true)\
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * *\
+ * UpdateItemSpecificsTest - Test Class and Function   *\
+ * to test the UpdateItemSpecifics trigger and class.  *\
+ * Written By: Kim A. Kitchen, Performance Depot Inc.  *\
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * */\
+public with sharing class UpdateItemSpecificsTest \{\
+	public static testMethod void validateUpdateItemSpecifics() \{\
+        String SKU = 'KimTest123';\
+        String SKU2 = 'KimTest234';\
+        String SKU3 = 'KimTest345';\
+        String SKU4 = 'KimTest456';\
+\
+        System.debug(' -- TEST (UpdateSpec) -- Testing using SKU ' + SKU + ' (1)');\
+        ECS__Product__C product = new ECS__Product__c(Name=SKU, partner_id__c=0, Partslink1__c='ABC123',OEM_Number__c='OEM123',Other_number__c='OTHER123',pos_front__c=true,pos_left__c=true,pos_right__c=true);\
+        insert product;\
+        ECS__Product__c[] products1 = [SELECT Interchange_Part_Number__c, Part_Brand__c, Manufacturer_Part_Number__c, Other_Part_Number__c, ECS__Warranty__c, Placement_On_Vehicle__c FROM ECS__Product__c WHERE Name = :SKU];\
+        System.debug(' -- TEST (UpdateSpec) -- ' + products1.size() + ' Products Loaded (A)');\
+        ECS__Product__c product1 = products1[0];\
+        \
+        // Test to make sure all of our new values exist in the new record\
+        system.assertEquals('ABC123',product1.Interchange_Part_Number__c);\
+        system.assertEquals('OEM123',product1.Manufacturer_Part_Number__c);\
+        system.assertEquals('OTHER123',product1.Other_Part_number__c);\
+        //system.assertEquals('Headlights Depot', product1.Part_Brand__c);\
+        system.assertEquals('Yes',product1.ECS__Warranty__c);\
+        system.assertEquals('Front,Left,Right',product1.Placement_On_Vehicle__c);\
+        \
+        System.debug(' -- TEST (UpdateSpec) -- Testing using SKU ' + SKU2 + ' (2)');\
+        product = new ECS__Product__c(Name=SKU2, partner_id__c=0, Partslink1__c='ABC123',OEM_Number__c='OEM123',Other_number__c='OTHER123',pos_rear__c=true,pos_left__c=true,pos_right__c=false);\
+        insert product;\
+        ECS__Product__c[] products2 = [SELECT Interchange_Part_Number__c, Part_Brand__c, Manufacturer_Part_Number__c, Other_Part_Number__c, ECS__Warranty__c, Placement_On_Vehicle__c FROM ECS__Product__c WHERE Name = :SKU2];\
+        System.debug(' -- TEST (UpdateSpec) -- ' + products2.size() + ' Products Loaded (B)');\
+        ECS__Product__c product2 = products2[0];\
+        system.assertEquals('Rear,Left',product2.Placement_On_Vehicle__c);\
+\
+        System.debug(' -- TEST (UpdateSpec) -- Testing using SKU ' + SKU3 + ' (3)');\
+        product = new ECS__Product__c(Name=SKU3, partner_id__c=0, Partslink1__c='ABC123',OEM_Number__c='OEM123',Other_number__c='OTHER123',pos_rear__c=true,pos_left__c=false,pos_right__c=true);\
+        insert product;\
+        ECS__Product__c[] products3 = [SELECT Interchange_Part_Number__c, Part_Brand__c, Manufacturer_Part_Number__c, Other_Part_Number__c, ECS__Warranty__c, Placement_On_Vehicle__c FROM ECS__Product__c WHERE Name = :SKU3];\
+        System.debug(' -- TEST (UpdateSpec) -- ' + products3.size() + ' Products Loaded (C)');\
+        ECS__Product__c product3 = products3[0];\
+        system.assertEquals('Rear,Right',product3.Placement_On_Vehicle__c);\
+\
+        System.debug(' -- TEST (UpdateSpec) -- Testing using SKU ' + SKU4 + ' (4)');\
+        product = new ECS__Product__c(Name=SKU4, partner_id__c=0, Partslink1__c='ABC123',OEM_Number__c='OEM123',Other_number__c='OTHER123',pos_front__c=true,pos_l_or_r__c=true);\
+        insert product;\
+        ECS__Product__c[] products4 = [SELECT Interchange_Part_Number__c, Part_Brand__c, Manufacturer_Part_Number__c, Other_Part_Number__c, ECS__Warranty__c, Placement_On_Vehicle__c FROM ECS__Product__c WHERE Name = :SKU4];\
+        System.debug(' -- TEST (UpdateSpec) -- ' + products4.size() + ' Products Loaded (D)');\
+        ECS__Product__c product4 = products4[0];\
+        system.assertEquals('Front,Left,Right',product4.Placement_On_Vehicle__c);\
+\
+        system.debug('-- TEST (UpdateSpec) -- All Assertions Passed (End)');\
+    \}\
+\}}

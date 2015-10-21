@@ -1,0 +1,156 @@
+{\rtf1\ansi\ansicpg1252\cocoartf1038\cocoasubrtf360
+{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
+{\colortbl;\red255\green255\blue255;}
+\margl1440\margr1440\vieww14960\viewh12560\viewkind0
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\ql\qnatural\pardirnatural
+
+\f0\fs24 \cf0 @isTest(SeeAllData=true)\
+/* \
+ * @isTest(SeeAllData=true) allows us to see existing data within the test class \
+ * otherwize we should create a test product to use for this test\
+ */\
+\
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *\
+* This is a Test Class to test the UpdateProductCompatibilities class  *\
+* which updates the Comapibilities fields in the B2CProducts table     *\
+* (by SKU) when a Fitment record is added or updated.                  *\
+* Written By Kim A. Kitchen, Performance Depot Inc, 2014-09-19         *\
+*                                                                      *\
+* NOTE: Turn on 'UpdateProductCompatibilities' in 'Control' Before     *\
+* deploying Inbound Change Set (Production) otherwize deployment       *\
+* will fail (test class Assert() fails because nothing changed)        *\
+* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */\
+\
+public with sharing class UpdateProductCompatibilitiesTestClass \{\
+    public static testMethod void validateUpdateCompatibilities() \{\
+        Control__c[] MyCtls = [SELECT UpdateProductCompatibilities__c FROM Control__c LIMIT 1];\
+       	Control__c MyCtl;\
+        Boolean DoUpdate = false;\
+       	if (MyCtls.size() > 0) \{\
+            MyCtl = MyCtls[0];\
+	        System.debug(' -- TEST (UpdateCompat) -- Controll.UpdateProductCompatibilities = ' + MyCtl.UpdateProductCompatibilities__c);\
+            DoUpdate = MyCtl.UpdateProductCompatibilities__c;\
+            if (DoUpdate == false) \{\
+                System.debug(' -- TEST (UpdateCompat) -- Setting Controll.UpdateProductCompatibilities to true');\
+                MyCtl.UpdateProductCompatibilities__c = true;\
+                update MyCtl;\
+            \}\
+       	\}\
+\
+        // CREATE THE PRODUCT\
+        String SKU = 'KimTest123';\
+        System.debug(' -- TEST (UpdateCompat) -- Testing using SKU ' + SKU + '');\
+        ECS__Product__C product = new ECS__Product__c(Name=SKU, Compatibilities__c='', FitmentsUpdated__c = false);\
+        insert product;\
+        /* get the Compatibilities fields from the product */\
+        Boolean OldFlag = false;\
+        /* Display the SKU and Original Compatibilities in the Debugger Output log */\
+        System.debug(' -- TEST (UpdateCompat) -- Before Update: SKU=\\'' + SKU + '\\', FitmentsUpdated=\\'' + OldFlag + '\\'');\
+        // ============================================================\
+		// STEP (A): Create and Insert a New Fitment record for our SKU \
+		// ============================================================\
+        //Fitment__c NewFitment1 = new Fitment__c(SKU__c=SKU, Make__c='Test Make 1', Model__c='Test Model 1', Year__c='2014', Trim__c='Test Trim 1', Engine__c='Test Engine1');\
+        Fitment__c NewFitment1 = new Fitment__c(SKU__c=SKU, Make__c='Test Make 1', Model__c='Test Model 1', Year__c='2014');\
+        insert NewFitment1;\
+        ECS__Product__c[] products2 = [SELECT FitmentsUpdated__c FROM ECS__Product__c WHERE Name = :SKU];\
+        System.debug(' -- TEST (UpdateCompat) -- ' + products2.size() + ' Products Loaded (A)');\
+        ECS__Product__c product2 = products2[0];\
+		System.assertEquals(true, product2.FitmentsUpdated__c);\
+		System.debug(' -- TEST (UpdateCompat) -- Product\\'s FitmentsUpdated Flag is true (as it should be)'); \
+        // =================================================================\
+        // reset the FitmentsUpdated flag back to 'false' for the next test \
+        // =================================================================\
+        product2.FitmentsUpdated__c = false;\
+        update product2;\
+        // ===============================================================\
+        // validate that the product's FitmentsUpdated flag has been reset \
+        // ===============================================================\
+        ECS__Product__c[] products3 = [SELECT FitmentsUpdated__c FROM ECS__Product__c WHERE Name = :SKU];\
+        System.debug(' -- TEST (UpdateCompat) -- ' + products3.size() + ' Products Loaded (B)');\
+        ECS__Product__c product3 = products3[0];\
+		System.assertEquals(false, product3.FitmentsUpdated__c);\
+		System.debug(' -- TEST (UpdateCompat) -- Product\\'s FitmentsUpdated Flag is false (as it should be)'); \
+        \
+        // ==============================================================\
+        // STEP (B): Load the fitment we created earlier and update it from blank to a value \
+        // ==============================================================\
+        Fitment__c[] OldFitments = [SELECT SKU__c, Make__c, Model__c, Year__c, Trim__c, Engine__c FROM Fitment__c WHERE SKU__c = :SKU];\
+        System.debug(' -- TEST (UpdateCompat) -- ' + OldFitments.size() + ' Fitments Loaded (B)');\
+        Fitment__c OldFitment = OldFitments[0];\
+        OldFitment.Trim__c = 'Test Trim 2';\
+        OldFitment.Engine__c = 'Test Engine 2';\
+        update OldFitment;\
+        \
+        // ================================================================================================\
+        // now reload the product, the fitment update should have caused the FitmentsUpdated flag to be set\
+        // ================================================================================================\
+        ECS__Product__c[] products4 = [SELECT FitmentsUpdated__c FROM ECS__Product__c WHERE Name = :SKU];\
+        System.debug(' -- TEST (UpdateCompat) -- ' + products4.size() + ' Products Loaded (C)');\
+        ECS__Product__c product4 = products4[0];\
+		System.assertEquals(true, product4.FitmentsUpdated__c);\
+		System.debug(' -- TEST (UpdateCompat) -- Product\\'s FitmentsUpdated Flag is true (as it should be)'); \
+        \
+        // =================================================================\
+        // reset the FitmentsUpdated flag back to 'false' for the next test \
+        // =================================================================\
+        product4.FitmentsUpdated__c = false;\
+        update product4;\
+        // =================================================================\
+        // validate that the product's FitmentsUpdated flag has been reset \
+        // =================================================================\
+        ECS__Product__c[] products5 = [SELECT FitmentsUpdated__c FROM ECS__Product__c WHERE Name = :SKU];\
+        System.debug(' -- TEST (UpdateCompat) -- ' + products5.size() + ' Products Loaded (D)');\
+        ECS__Product__c product5 = products5[0];\
+		System.assertEquals(false, product5.FitmentsUpdated__c);\
+		System.debug(' -- TEST (UpdateCompat) -- Product\\'s FitmentsUpdated Flag is false (as it should be)'); \
+       \
+        // ==============================================================\
+        // STEP (D): Load the fitment we created earlier and update it (from one value to another)\
+        // ==============================================================\
+        Fitment__c[] OldFitments2 = [SELECT SKU__c, Make__c, Model__c, Year__c, Trim__c, Engine__c FROM Fitment__c WHERE SKU__c = :SKU];\
+        System.debug(' -- TEST (UpdateCompat) -- ' + OldFitments2.size() + ' Fitments Loaded (D)');\
+        Fitment__c OldFitment2 = OldFitments2[0];\
+        OldFitment2.Trim__c = 'Test Trim 3';\
+        OldFitment2.Engine__c = 'Test Engine 3';\
+        update OldFitment2;\
+		// ================================================================================================\
+        // now reload the product, the fitment update should have caused the FitmentsUpdated flag to be set\
+        // ================================================================================================\
+        ECS__Product__c[] products6 = [SELECT FitmentsUpdated__c FROM ECS__Product__c WHERE Name = :SKU];\
+        System.debug(' -- TEST (UpdateCompat) -- ' + products6.size() + ' Products Loaded (E)');\
+        ECS__Product__c product6 = products6[0];\
+		System.assertEquals(true, product6.FitmentsUpdated__c);\
+		System.debug(' -- TEST (UpdateCompat) -- Product\\'s FitmentsUpdated Flag is true (as it should be)'); \
+        // =================================================================\
+        // reset the FitmentsUpdated flag back to 'false' for the next test\
+        // =================================================================\
+        product6.FitmentsUpdated__c = false;\
+        update product6;\
+        // ================================================================\
+        // validate that the product's FitmentsUpdated flag has been reset \
+        // ================================================================\
+        ECS__Product__c[] products7 = [SELECT FitmentsUpdated__c FROM ECS__Product__c WHERE Name = :SKU];\
+        System.debug(' -- TEST (UpdateCompat) -- ' + products7.size() + ' Products Loaded (F)');\
+        ECS__Product__c product7 = products5[0];\
+		System.assertEquals(false, product5.FitmentsUpdated__c);\
+		System.debug(' -- TEST (UpdateCompat) -- Product\\'s FitmentsUpdated Flag is false (as it should be)'); \
+        // ==============================================================\
+        // STEP (G): Load the fitment we created earlier and update it (from a value to blank)\
+        // ==============================================================\
+        Fitment__c[] OldFitments3 = [SELECT SKU__c, Make__c, Model__c, Year__c, Trim__c, Engine__c FROM Fitment__c WHERE SKU__c = :SKU];\
+        System.debug(' -- TEST (UpdateCompat) -- ' + OldFitments3.size() + ' Fitments Loaded (D)');\
+        Fitment__c OldFitment3 = OldFitments3[0];\
+        OldFitment3.Trim__c = '';\
+        OldFitment3.Engine__c = '';\
+        update OldFitment3;\
+		// ================================================================================================\
+        // now reload the product, the fitment update should have caused the FitmentsUpdated flag to be set\
+        // ================================================================================================\
+        ECS__Product__c[] products8 = [SELECT FitmentsUpdated__c FROM ECS__Product__c WHERE Name = :SKU];\
+        System.debug(' -- TEST (UpdateCompat) -- ' + products8.size() + ' Products Loaded (G)');\
+        ECS__Product__c product8 = products8[0];\
+		System.assertEquals(true, product8.FitmentsUpdated__c);\
+		System.debug(' -- TEST (UpdateCompat) -- Product\\'s FitmentsUpdated Flag is true (as it should be)'); \
+       \
+    \}\
+\}}

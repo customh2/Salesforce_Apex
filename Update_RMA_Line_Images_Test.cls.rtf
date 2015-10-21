@@ -1,0 +1,80 @@
+{\rtf1\ansi\ansicpg1252\cocoartf1038\cocoasubrtf360
+{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
+{\colortbl;\red255\green255\blue255;}
+\margl1440\margr1440\vieww14960\viewh12560\viewkind0
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\ql\qnatural\pardirnatural
+
+\f0\fs24 \cf0 @isTest(SeeAllData=true)\
+/* * * * * * * * * * * * * * * * * * * * * * * * * *\
+ * Test class to test updating RMA Line Image URLs *\
+ * * * * * * * * * * * * * * * * * * * * * * * * * */\
+\
+public with sharing class Update_RMA_Line_Images_Test \{\
+	public static testMethod void validate_Update_RMA_Line_Images() \{\
+        String Name = '';\
+        String NAME1 = 'RA-000000000'; // exists in SandFull but not Production\
+        String NAME2 = 'RA-000000939'; // exists on production but not SandFull\
+        String ID = 'a0Uo00000001WBu';\
+        String PATH = 'https://googledrive.com/host/0B4Xv4G75_iwsN3RGbDMwRTZOMjA/';\
+        String URL1 = 'image1.jpg';\
+        String URL2 = 'image2.jpg';\
+        String URL3 = 'image3.jpg';\
+        String URL4 = 'image4.jpg';\
+        String URL5 = 'image5.jpg';\
+        String URL6 = 'http://pdistorage.blob.core.windows.net/pics/image1.jpg';\
+        //System.debug(' -- TEST -- Adding New RMA Line ' + NAME + ' ...');\
+        //CloudConversion__RMA_Line__c rma_line = new CloudConversion__RMA_Line__c(CloudConversion__External_RMA_Number__c=NAME, Image_URL_1__c=URL1, Image_URL_2__c=URL2, Image_URL_3__c=URL3, Image_URL_4__c=URL4);\
+        //insert rma_line;\
+        CloudConversion__RMA_Line__c rma_line;\
+        CloudConversion__RMA_Line__c[] rma_lines1 = [SELECT Name, Image_URL_1__c, Image_URL_2__c, Image_URL_3__c, Image_URL_4__c FROM CloudConversion__RMA_Line__c WHERE Name = :NAME1];\
+        CloudConversion__RMA_Line__c[] rma_lines2 = [SELECT Name, Image_URL_1__c, Image_URL_2__c, Image_URL_3__c, Image_URL_4__c FROM CloudConversion__RMA_Line__c WHERE Name = :NAME2];\
+        if (rma_lines1.size() > 0) \{\
+            rma_line = rma_lines1[0];\
+            Name = Name1;\
+        \} else \{\
+            rma_line = rma_lines2[0];\
+            Name = Name2;\
+        \}\
+        rma_line.Image_URL_1__c = URL1;\
+        rma_line.Image_URL_1__c = URL1;\
+		rma_line.Image_URL_2__c = URL2;\
+		rma_line.Image_URL_3__c = URL3;\
+		rma_line.Image_URL_4__c = URL4;\
+        update rma_line;\
+        \
+        // Lookup the newly insertes RMA Line anf get the new Image_URL fields\
+        System.debug(' -- TEST -- Original RMA Line ' + NAME + ' was Updated, Reloading it ...');\
+        CloudConversion__RMA_Line__c rma_line2 = [SELECT Image_URL_1__c, Image_URL_2__c, Image_URL_3__c, Image_URL_4__c FROM CloudConversion__RMA_Line__c WHERE Name = :NAME];\
+        String URL1a = rma_line2.Image_URL_1__c;\
+        String URL2a = rma_line2.Image_URL_2__c;\
+        String URL3a = rma_line2.Image_URL_3__c;\
+        String URL4a = rma_line2.Image_URL_4__c;\
+        System.debug(' -- TEST -- Updated RMA Line was Reloaded:');       \
+        System.debug(' -- TEST -- URL1a: ' + URL1a);       \
+        System.debug(' -- TEST -- URL2a: ' + URL2a);       \
+        System.debug(' -- TEST -- URL3a: ' + URL3a);       \
+        System.debug(' -- TEST -- URL4a: ' + URL4a);       \
+\
+        // update 2 of the image URLs and save it\
+        System.debug(' -- TEST -- Updating Images 1 and 2 ... ');       \
+        rma_line2.Image_URL_1__c = URL5; // an image without a path (should be modified)\
+        rma_line2.Image_URL_2__c = URL6; // an image WITH an explicit path (should not be modified)\
+        update rma_line2;\
+  \
+        // Next: Lookup the updated rma line and get images #1 and #2\
+         CloudConversion__RMA_Line__c rma_line3 = [SELECT Image_URL_1__c, Image_URL_2__c, Image_URL_3__c, Image_URL_4__c FROM CloudConversion__RMA_Line__c WHERE Name = :NAME];\
+        String URL1b = rma_line3.Image_URL_1__c;\
+        String URL2b = rma_line3.Image_URL_2__c;\
+        System.debug(' -- TEST -- Updated RMA Line was Reloaded:');       \
+        System.debug(' -- TEST -- URL1b: ' + URL1b);       \
+        System.debug(' -- TEST -- URL2b: ' + URL2b);       \
+ \
+        // OK, Now make sure everything went 100% as planned ...\
+        System.assertEquals(URL1a, PATH + URL1); // Image #1 should have the path prepended to it\
+        System.assertEquals(URL2a, PATH + URL2); // Image #2 should have the path prepended to it\
+        System.assertEquals(URL3a, PATH + URL3); // Image #3 should have the path prepended to it\
+        System.assertEquals(URL4a, PATH + URL4); // Image #4 should have the path prepended to it\
+        System.assertEquals(URL1b, PATH + URL5); // Image #1 should have the path prepended to it\
+        System.assertEquals(URL2b, URL6); // Image #2 should not have any changes made to it\
+    \}\
+\}}
