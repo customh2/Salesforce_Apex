@@ -1,0 +1,95 @@
+{\rtf1\ansi\ansicpg1252\cocoartf1038\cocoasubrtf360
+{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
+{\colortbl;\red255\green255\blue255;}
+\margl1440\margr1440\vieww9000\viewh8400\viewkind0
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\ql\qnatural\pardirnatural
+
+\f0\fs24 \cf0 @isTest(SeeAllData=true)\
+public class UpdateOrderRSLPossibleTest \{\
+	public static testMethod void Testit() \{\
+        // Products with RSL Quantity\
+        List<ECS__Product__c> products1 = [SELECT Id, Name, ECS__price__c, RSL_Qty__c FROM ECS__Product__c WHERE RSL_Qty__c > 0 limit 10];\
+        // Products Without RSL Quantity\
+        List<ECS__Product__c> products2 = [SELECT Id, Name, ECS__price__c, RSL_Qty__c FROM ECS__Product__c WHERE RSL_Qty__c = 0 limit 10];\
+        // an Account, Any Account, to use for the test orders\
+        Account Acct1 = [SELECT Id, Name FROM Account limit 1];\
+        // a Contact, Any Contact, to use for the test orders\
+        Contact Contact1 = [SELECT Id, Name, MailingAddress, OtherAddress FROM Contact LIMIT 1];\
+        // create a new order where all items have RSL Quantity\
+        ECS__eCommSource_Order__c Order1 = new ECS__eCommSource_Order__c(Name='TestOrder1', ECS__Customer__c=Contact1.Id, RSL_Possible__c = false);\
+        insert Order1;\
+        String OrderID1 = Order1.Id;\
+        system.debug(' -- TEST -- Order1 Created.');\
+        // create a few OrderLines for new Order #1 (all with RSL Quantity)\
+        if (products1.size() > 0) \{\
+            ECS__eCommSource_Order_Line__c OrderLine1 = new ECS__eCommSource_Order_Line__c(Name='Test1',ECS__Order__c=OrderID1);\
+			OrderLine1.ECS__Product__c=products1[0].Id;\
+            OrderLine1.ECS__Quantity__c=1;\
+            OrderLine1.ECS__Unit_Price__c = products1[0].ECS__Price__c;\
+            OrderLine1.ECS__Order_Line_Total__c = products1[0].ECS__Price__c;\
+            insert OrderLine1;\
+            system.debug(' -- TEST -- OrderLine1 Created: ' + Products1[0].Name + ' = ' + products1[0].RSL_Qty__c + '.');\
+        \}\
+        if (products1.size() > 1) \{\
+            ECS__eCommSource_Order_Line__c OrderLine2 = new ECS__eCommSource_Order_Line__c(Name='Test2',ECS__Order__c=OrderID1);\
+			OrderLine2.ECS__Product__c=products1[1].Id;\
+            OrderLine2.ECS__Quantity__c=1;\
+            OrderLine2.ECS__Unit_Price__c = products1[1].ECS__Price__c;\
+            OrderLine2.ECS__Order_Line_Total__c = products1[1].ECS__Price__c;\
+            insert OrderLine2;\
+            system.debug(' -- TEST -- OrderLine2 Created: ' + Products1[1].Name + ' = ' + products1[1].RSL_Qty__c + '.');\
+        \}\
+        if (products1.size() > 2) \{\
+            ECS__eCommSource_Order_Line__c OrderLine3 = new ECS__eCommSource_Order_Line__c(Name='Test3',ECS__Order__c=OrderID1);\
+			OrderLine3.ECS__Product__c=products1[2].Id;\
+            OrderLine3.ECS__Quantity__c=1;\
+            OrderLine3.ECS__Unit_Price__c = products1[2].ECS__Price__c;\
+            OrderLine3.ECS__Order_Line_Total__c = products1[2].ECS__Price__c;\
+            insert OrderLine3;\
+            system.debug(' -- TEST -- OrderLine3 Created: ' + Products1[2].Name + ' = ' + products1[2].RSL_Qty__c + '.');\
+        \}\
+        // Reload Order #1 (All items have RSL Qty)\
+        Order1 = [SELECT Id, Name, RSL_Possible__c FROM ECS__eCommSource_Order__c WHERE Id = :OrderID1];\
+        system.debug(' -- TEST -- Order1 Reloaded: RSL_Possible = ' + Order1.RSL_Possible__c + '.');\
+        // create a new order where one item does not have RSL Quantity\
+        ECS__eCommSource_Order__c Order2 = new ECS__eCommSource_Order__c(Name='TestOrder2', ECS__Customer__c=Contact1.Id, RSL_Possible__c = false);\
+        insert Order2;\
+        String OrderID2 = Order2.Id;\
+        system.debug(' -- TEST -- Order2 Created.');\
+        // create a few OrderLines for new Order #1 (all with RSL Quantity)\
+        if (products2.size() > 0) \{ // This item has no RSL Quantity\
+            ECS__eCommSource_Order_Line__c OrderLine4 = new ECS__eCommSource_Order_Line__c(Name='Test4',ECS__Order__c=OrderID2);\
+			OrderLine4.ECS__Product__c=products2[0].Id;\
+            OrderLine4.ECS__Quantity__c=1;\
+            OrderLine4.ECS__Unit_Price__c = products2[0].ECS__Price__c;\
+            OrderLine4.ECS__Order_Line_Total__c = products2[0].ECS__Price__c;\
+            insert OrderLine4;\
+            system.debug(' -- TEST -- OrderLine4 Created: ' + Products2[0].Name + ' = ' + products2[0].RSL_Qty__c + '.');\
+        \}\
+        if (products1.size() > 0) \{ // This item DOES have RSL Quantity\
+            ECS__eCommSource_Order_Line__c OrderLine5 = new ECS__eCommSource_Order_Line__c(Name='Test5',ECS__Order__c=OrderID2);\
+			OrderLine5.ECS__Product__c=products1[0].Id;\
+            OrderLine5.ECS__Quantity__c=1;\
+            OrderLine5.ECS__Unit_Price__c = products1[0].ECS__Price__c;\
+            OrderLine5.ECS__Order_Line_Total__c = products1[0].ECS__Price__c;\
+            insert OrderLine5;\
+            system.debug(' -- TEST -- OrderLine5 Created: ' + Products1[0].Name + ' = ' + products1[0].RSL_Qty__c + '.');\
+        \}\
+        if (products1.size() > 1) \{// This item DOES have RSL Quantity\
+            ECS__eCommSource_Order_Line__c OrderLine6 = new ECS__eCommSource_Order_Line__c(Name='Test6',ECS__Order__c=OrderID2);\
+			OrderLine6.ECS__Product__c=products1[1].Id;\
+            OrderLine6.ECS__Quantity__c=1;\
+            OrderLine6.ECS__Unit_Price__c = products1[1].ECS__Price__c;\
+            OrderLine6.ECS__Order_Line_Total__c = products1[1].ECS__Price__c;\
+            insert OrderLine6;\
+            system.debug(' -- TEST -- OrderLine6 Created: ' + Products1[1].Name + ' = ' + products1[1].RSL_Qty__c + '.');\
+        \}\
+        // Reload Order #2 (some items have RSL Qty)\
+        Order2 = [SELECT Id, Name, RSL_Possible__c FROM ECS__eCommSource_Order__c WHERE Id = :OrderID2];\
+        system.debug(' -- TEST -- Order2 Reloaded: RSL_Possible = ' + Order2.RSL_Possible__c + '.');\
+        \
+        // OK, Test to make sure Order1 DOES have RSL_Possible checked and Order2 DOES NOT\
+        system.assertEquals(true, Order1.RSL_Possible__c);\
+        system.assertEquals(false, Order2.RSL_Possible__c);\
+    \}\
+\}}

@@ -1,0 +1,102 @@
+{\rtf1\ansi\ansicpg1252\cocoartf1038\cocoasubrtf360
+{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
+{\colortbl;\red255\green255\blue255;}
+\margl1440\margr1440\vieww9000\viewh8400\viewkind0
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\ql\qnatural\pardirnatural
+
+\f0\fs24 \cf0 trigger UpdateOrderRSLPossible on ECS__eCommSource_Order_Line__c (after insert,after update) \{\
+    ECS__eCommSource_Order_Line__c[] new_lines = Trigger.new; // These Order Lines are passed in (newly added/updated)\
+	boolean OK = true;\
+    boolean Found = false;\
+    Map<String, boolean> OrderIDs = new Map<String, boolean>();\
+    Map<String, Decimal> ProductIDs = new Map<String, Decimal>();\
+    Map<String, boolean> OrdersMap = new Map<String, boolean>();\
+    Map<String, Decimal> ProductsMap = new Map<String, Decimal>();\
+	List<ECS__Product__c> products = new List<ECS__Product__c>();\
+    \
+    // iterate through new lines, build OrderIDs and ProductIDs maps\
+    for (ECS__eCommSource_Order_Line__c new_line : new_lines) \{\
+        if (OrderIDs.get(new_line.ECS__Product__c) == null) OrderIDs.put(new_line.ECS__Order__c,true);\
+        //if (ProductIDs.get(new_line.ECS__Product__c) == null) ProductIDs.put(new_line.ECS__Product__c,0);\
+    \}\
+    system.debug(' -- TRIGGER (UpdateOrderRSLPossible): ' + OrderIDs.size() + ' OrderIDs mapped.');\
+    \
+    // query OrderLines once with all order IDs\
+    String Query = 'SELECT Id, Name, ECS__Order__c, ECS__Product__c, ECS__Quantity__c  FROM ECS__eCommSource_Order_Line__c';\
+    integer i = 0;\
+    for (String Str : OrderIDs.keySet()) \{\
+        if (i == 0) Query = Query + ' WHERE ';\
+        else Query = Query + ' OR ';\
+        Query = Query + 'ECS__Order__c = \\'' + Str + '\\'';\
+        i = i + 1;\
+    \}\
+    List<ECS__eCommSource_Order_Line__c> order_lines = database.query(Query);\
+    system.debug(' -- TRIGGER (UpdateOrderRSLPossible): ' + order_lines.size() + ' OrderLines loaded.'); \
+    \
+    for (ECS__eCommSource_Order_Line__c order_line : order_lines) \{\
+    	if (ProductIDs.get(order_line.ECS__Product__c) == null) ProductIDs.put(order_line.ECS__Product__c,0);\
+    \}\
+\
+    system.debug(' -- TRIGGER (UpdateOrderRSLPossible): ' + ProductIDs.size() + ' ProductIDs mapped.');\
+    if (ProductIDs.size() > 0) \{\
+    	// query products once with all product IDs\
+    	Query = 'SELECT Id, Name, RSL_Qty__c  FROM ECS__Product__c';\
+    	i = 0;\
+    	for (String Str : ProductIDs.keySet()) \{\
+        	if (i == 0) Query = Query + ' WHERE ';\
+        	else Query = Query + ' OR ';\
+        	Query = Query + 'Id = \\'' + Str + '\\'';\
+        	i = i + 1;\
+    	\}\
+    	products = database.query(Query);\
+    	system.debug(' -- TRIGGER (UpdateOrderRSLPossible): ' + products.size() + ' Products loaded.');\
+    \} else \{\
+        system.debug(' -- TRIGGER (UpdateOrderRSLPossible): No Products loaded (No ProductIDs).');\
+    \}\
+\
+    // Add all product IDs and RSL Qtys to ProductsMap\
+    for (ECS__Product__c product : products) \{\
+        system.debug(' -- TRIGGER (UpdateOrderRSLPossible): Adding to map: ' + product.Id + ',' + product.RSL_Qty__c + ' (' + product.Name + ').');\
+        ProductsMap.put(product.Id, product.RSL_Qty__c);\
+    \}\
+    \
+    // for each order: for each order_line, set the RSL_Possible flag\
+    for (String OrderId : OrderIDs.keySet()) \{\
+        system.debug(' -- TRIGGER (UpdateOrderRSLPossible): Processing Order ' + OrderID + ' ...');\
+        OK = true;\
+        for (ECS__eCommSource_Order_Line__c order_line : order_lines) \{\
+            if (order_line.ECS__Order__c == OrderID) \{\
+                system.debug(' -- TRIGGER (UpdateOrderRSLPossible): OrderLine ' + order_line.name + ' needs ' + order_line.ECS__Quantity__c + ' Qty.');\
+                for (String ProductId: ProductsMap.keySet()) \{\
+                    if (ProductId == order_line.ECS__Product__c) \{\
+                        system.debug(' -- TRIGGER (UpdateOrderRSLPossible): Product has ' + ProductsMap.get(ProductId) + ' RSL Qty.');\
+                        if (ProductsMap.get(ProductId) < order_line.ECS__Quantity__c) \{\
+                            system.debug(' -- TRIGGER (UpdateOrderRSLPossible): NOT ENOUGH RSL Qty.');\
+                            OK = false;\
+                        \}\
+                    \} \
+                \}\
+            \}\
+        \}\
+        system.debug(' -- TRIGGER (UpdateOrderRSLPossible): Setting Order ' + OrderId + ' to ' + OK + '.');\
+    	OrdersMap.put(OrderId, OK);\
+    \}\
+	\
+    // Build query and load all referrenced orders\
+    Query = 'SELECT Id, Name, 	RSL_Possible__c FROM ECS__eCommSource_Order__c';\
+    i = 0;\
+    for (String OrderID : OrdersMap.keySet()) \{\
+        if (i == 0) Query = Query + ' WHERE ';\
+        else Query = Query + ' OR ';\
+        Query = Query + 'Id = \\'' + OrderID + '\\'';\
+        i = i + 1;\
+    \}\
+    List<ECS__eCommSource_Order__c> Orders = database.query(Query);\
+    system.debug(' -- TRIGGER (UpdateOrderRSLPossible): ' + Orders.size() + ' Orders Reloaded.');\
+    for (ECS__eCommSource_Order__c Order : Orders) \{\
+        system.debug(' -- TRIGGER (UpdateOrderRSLPossible): Setting Order ' + Order.Name + ' to ' + OrdersMap.get(Order.Id) + '.');\
+        Order.RSL_Possible__c = OrdersMap.get(Order.Id);\
+    \}\
+    // write the Orders back to the database\
+    update Orders;\
+\}}
