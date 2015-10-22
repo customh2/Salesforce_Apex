@@ -1,0 +1,57 @@
+{\rtf1\ansi\ansicpg1252\cocoartf1038\cocoasubrtf360
+{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
+{\colortbl;\red255\green255\blue255;}
+\margl1440\margr1440\vieww9000\viewh8400\viewkind0
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\ql\qnatural\pardirnatural
+
+\f0\fs24 \cf0 trigger Update_Return_Total on CloudConversion__RMA_Line__c (after insert, after update) \{\
+    //Map<String, Supplier_return_return__c> Returns = new Map<String, Supplier_return_return__c>();\
+    Map<String,Decimal> ReturnIDs = new Map<String,Decimal>();\
+	CloudConversion__RMA_Line__c[] new_lines = Trigger.new; // These RMA Lines are passed in (newly added/updated)\
+    system.debug(' -- TRIGGER (Update_Return_Total): ' + new_lines.size() + ' RMA Lines passed in.'); \
+    \
+    // Add the Return IDs to the ReturnIDs map\
+    for (CloudConversion__RMA_Line__c new_line : new_lines) \{\
+        String ID = new_line.Supplier_return__c;\
+        if (ReturnIDs.get(ID) == null && ID != null) ReturnIDs.put(ID,0);\
+    \}\
+    \
+    // build query and load all RMA Lines for the mapped returns\
+    if (ReturnIDs.size() > 0) \{\
+        \
+    	String Query = 'SELECT Id, Name, Supplier_return__c, CloudConversion__Returned_Quantity__c, CloudConversion__Original_Product_Cost__c  FROM CloudConversion__RMA_Line__c';\
+    	integer i = 0;\
+    	for (String Str : ReturnIDs.keySet()) \{\
+        	if (i == 0) Query = Query + ' WHERE ';\
+        	else Query = Query + ' OR ';\
+        	Query = Query + 'Supplier_return__c = \\'' + Str + '\\'';\
+        	i = i + 1;\
+    	\}\
+    	List<CloudConversion__RMA_Line__c> rma_lines = database.query(Query);\
+    	system.debug(' -- TRIGGER (Update_Return_Total): ' + rma_lines.size() + ' RMA Lines loaded.'); \
+\
+    	// Build query and load all Supplier_return_return records\
+    	Query = 'SELECT Id, Name, Expected_Total__c FROM Supplier_return_return__c';\
+    	i = 0;\
+    	for (String Str : ReturnIDs.keySet()) \{\
+        	if (i == 0) Query = Query + ' WHERE ';\
+        	else Query = Query + ' OR ';\
+        	Query = Query + 'Id = \\'' + Str + '\\'';\
+        	i = i + 1;\
+    	\}\
+    	List<Supplier_return_return__c> returns = database.query(Query);\
+    	system.debug(' -- TRIGGER (Update_Return_Total): ' + returns.size() + ' Supplier Returns loaded.'); \
+    \
+    	// loop through each return and total up the amounts\
+    	for (Supplier_return_return__c my_return : returns) \{\
+        	String ReturnID = my_return.Id;\
+        	Decimal Total = 0;\
+        	for (CloudConversion__RMA_Line__c rma_line : rma_lines) \{\
+        	    if (rma_line.Supplier_Return__c == ReturnID) Total = Total + (rma_line.CloudConversion__Returned_Quantity__c * rma_line.CloudConversion__Original_Product_Cost__c);\
+        	\}\
+        	system.debug(' -- TRIGGER (Update_Return_Total): Setting Return ' + my_return.Name + '\\'s Expected Total to ' + Total + '.'); \
+        	my_return.Expected_Total__c = Total;\
+    	\}\
+    	update returns;\
+    \}\
+\}}
