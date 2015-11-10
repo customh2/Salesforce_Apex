@@ -1,0 +1,117 @@
+<apex:page StandardController="WebsiteControl__c" extensions="WebsiteOrders" docType="html-5.0">
+  <style>
+    /* This is for the full screen DIV */
+    .popupBackground {
+        /* Background color */
+        background-color:black;
+        opacity: 0.20;
+        filter: alpha(opacity = 20);
+    
+        /* Dimensions */
+        width: 100%;
+        height: 100%;
+        top: 0;
+        left: 0;
+        z-index: 998;
+        position: absolute;
+        
+        /* Mouse */
+        cursor:wait;
+    }
+ 
+    /* This is for the message DIV */
+    .PopupPanel {
+        /* Background color */
+        border: solid 2px blue;
+        background-color: white;
+ 
+        /* Dimensions */
+        left: 50%;
+        width: 350px;
+        margin-left: -100px;
+        top: 50%;
+        height: 100px;
+        margin-top: -25px;
+        z-index: 999;
+        position: fixed;
+        
+        /* Mouse */
+        cursor:pointer;
+    }
+  </style>
+  <script language="javascript">
+      function please_wait() {
+          document.getElementById('j_id0:statusSaveTrip.start').style.display = "block";
+      }
+  </script>
+  <apex:actionStatus id="statusSaveTrip" stopText="">
+    <apex:facet name="start">
+        <div>
+            <div class="popupBackground" />
+            <div class="PopupPanel">
+                <table border="0" width="100%" height="100%">
+                    <tr>
+                        <td align="center"><b>Please Wait</b></td>
+                    </tr>
+                    <tr>
+                        <td align="center"><font color="#FF00FF" size="+2"><b>Processing, Please Wait ...</b></font></td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </apex:facet>
+  </apex:actionStatus>
+  <apex:sectionHeader title="Website Orders Download"/>
+    <apex:pageMessages />
+    <apex:form >
+    <apex:pageBlock >
+    
+        <apex:pageBlockSection >
+            <apex:commandButton value="Fetch ALL NEW Website Orders" action="{!fetch_website_orders}" status="statusSaveTrip" onClick="please_wait()"/>
+        </apex:pageBlockSection>
+
+            Order#:<apex:inputText id="OrderNumber" value="{!OrderNumber}"/>
+            <apex:actionFunction name="fetch_one" action="{!fetch_one_order}"/>
+            <apex:commandButton value="Fetch ONE Website Order" action="{!fetch_one_order}" onClick="please_wait()"/>
+
+        <apex:pageBlockSection >
+            <apex:commandButton value="WebsiteControls" action="{!WebsiteControls}"/>
+        </apex:pageBlockSection>
+
+        
+    </apex:pageBlock>
+    <table cellpadding="3" cellspacing="0" border="1">
+        <tr>
+            <td>
+                <h2>Temporary Settings Override</h2>
+                <table cellpadding="3" cellspacing="0" border="0">
+                    <tr>
+                        <td align="right">Download Enable:</td><td><apex:inputCheckbox value="{!DownloadEnable}"/></td>
+                        <td align="right">Debugging Enable:</td><td><apex:inputCheckbox value="{!DebugEnable}"/></td>
+                   </tr>
+                   <tr><td align="right">Download URL:</td><td colspan="3"><apex:inputText value="{!DownloadURL}" size="100"/></td></tr> 
+                   <tr>
+                        <td align="right">Username:</td><td><apex:inputText value="{!DownloadUsername}" size="35"/></td>
+                        <td align="right">Password:</td><td><apex:inputText value="{!DownloadPassword}" size="35"/></td>
+                   </tr>
+                   <tr>
+                        <td align="right">Last Download:</td><td><apex:input type="datetime" value="{!LastDownload}" size="35"/></td>
+                        <td align="right">Delay Minutes:</td><td><apex:inputText value="{!DownloadMinutes}" size="2"/>
+                        &nbsp;&nbsp;&nbsp;&nbsp;Max to Download:&nbsp;&nbsp;<apex:inputText value="{!DownloadMax}" size="3"/></td>
+                   </tr>
+                   <tr>
+                        <td align="right">Ship Carrier:</td><td><apex:inputText value="{!OrderShipCarrier}" size="35"/></td>
+                        <td align="right">Ship Class:</td><td><apex:inputText value="{!OrderShipClass}" size="35"/></td>
+                   </tr>
+                   <tr>
+                       <td colspan="4" align="center">
+                           <apex:commandButton value="Save Temporary Settings" action="{!use_temp_settings}" onClick="please_wait()"/>
+                           <apex:commandButton value="Restore Original Settings" action="{!restore_settings}" onClick="please_wait()"/>
+                       </td>
+                   </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+    </apex:form>
+</apex:page>

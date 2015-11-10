@@ -1,0 +1,37 @@
+<apex:page standardController="CloudConversion__RMA_Line__c" extensions="CreateVendorReturn" recordSetVar="rma_lines" >
+    <apex:sectionHeader title="Create a Vendor Return with Selected RMA Lines"/>
+    <apex:pageMessages />
+    <apex:form >
+    <apex:pageBlock >
+        <apex:pageBlockButtons location="bottom" >
+            <apex:commandButton value="Cancel" action="{!cancel}"/>
+            <apex:commandButton value="Create Vendor Return" action="{!create_return}" id="btnCreate" style="visibility: visible"/>
+            <apex:commandButton value="List EE RMA Lines" action="{!list_ee_rma_lines}"/>
+            <apex:commandButton value="List Vendor Retuns" action="{!list_returns}"/>
+        </apex:pageBlockButtons>
+        <pageBlockSection>
+        <apex:OutputLabel >Email Recipient:</apex:OutputLabel>
+            <apex:inputText id="MailTo" value="{!Recipient}" size="50"/>
+        <pageBlockSection>
+        </pageBlockSection>
+         <apex:OutputLabel >CC EMail To:</apex:OutputLabel>
+            <apex:inputText id="CC_To" value="{!CC_Recipient}" size="50"/>
+        </pageBlockSection>
+       <apex:pageBlockTable value="{!selected}" var="l">
+            <apex:column value="{!l.Name}" title="RMA Line Name"/>
+            <apex:column value="{!l.CloudConversion__Supplier__c}"/>
+            <apex:column value="{!l.RMA_Status__c}"/>
+            <apex:column value="{!l.Vendor_Return_Code_1A__c}"/>
+            <apex:column value="{!l.Vendor_Return_Code_1B__c}"/>
+            <apex:column value="{!l.Supplier_return__c}"/>
+
+        </apex:pageBlockTable>
+    </apex:pageBlock>
+    </apex:form>
+    <script language="javascript">
+    function hide_button() {
+        document.getElementById('j_id0:j_id28:j_id29:j_id30:btnCreate').style.visibility = "hidden";
+        {!script}
+    }
+    </script>
+</apex:page>
